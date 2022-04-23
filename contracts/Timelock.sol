@@ -23,6 +23,11 @@ contract Timelock is ITimelock, Context {
     _deployer = _msgSender();
   }
 
+  function setFeePerHour(uint256 fee_) external onlyDeployer {
+    require(fee_ > 0, "FEE_MUST_BE_GREATER_THAN_0");
+    _fee = fee_;
+  }
+
   function depositEther(uint256 releaseTime_, address recipient_) external payable returns (bool) {
     _releaseTime = releaseTime_;
     _amount = msg.value;

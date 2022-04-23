@@ -15,6 +15,8 @@ interface ITimelock {
 
   function _fee() external returns (uint256);
 
+  function setFeePerHour(uint256 fee_) external;
+
   function proceedWithTx() external;
 
   function retract() external;
