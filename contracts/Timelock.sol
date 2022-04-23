@@ -1,20 +1,40 @@
 pragma solidity ^0.8.0;
 
-import './interfaces/ITimelock.sol';
+import "@openzeppelin/contracts/utils/Context.sol";
+import "./interfaces/ITimelock.sol";
 
-contract Timelock is ITimelock {
-  uint public _amount;
-  uint public _releaseTime;
+contract Timelock is ITimelock, Context {
+  uint256 public _amount;
+  uint256 public _releaseTime;
   bool public _released;
   address public _token;
-  
-  constructor(uint amount_, uint releaseTime_, address token_) {
-    _amount = amount_;
-    _releaseTime = releaseTime_;
-    _token = token_;
+  address public _createdBy;
+  address public _recipient;
+  uint256 public _fee;
+
+  address _deployer;
+
+  modifier onlyDeployer() {
+    require(_msgSender() == _deployer, "FORBIDDEN");
+    _;
   }
 
-  function releaseToken() external {
+  constructor() {
+    _deployer = _msgSender();
+  }
+
+  function depositEther(uint256 releaseTime_, address recipient_) external payable returns (bool) {
+    _releaseTime = releaseTime_;
+    _amount = msg.value;
+    _token = address(0);
+    _createdBy = _msgSender();
+    _recipient = recipient_;
+    return true;
+  }
+
+  function proceedWithTx() external {
     _released = true;
   }
+
+  function retract() external {}
 }
