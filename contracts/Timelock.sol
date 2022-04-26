@@ -37,7 +37,56 @@ contract Timelock is ITimelock, Context {
     return true;
   }
 
+  function depositERC20(
+    uint256 releaseTime_,
+    address recipient,
+    address token,
+    uint256 value_
+  ) external returns (bool) {}
+
+  function _safeTransferFrom(
+    address token_,
+    address sender_,
+    address recipient_,
+    uint256 value_
+  ) private returns (bool) {
+    (bool success, bytes memory data) = token_.call(
+      abi.encodeWithSelector(
+        bytes4(keccak256(bytes("transferFrom(address,address,uint256)"))),
+        sender_,
+        recipient_,
+        value_
+      )
+    );
+    require(success && (data.length == 0 || abi.decode(data, (bool))), "could not safely transfer tokens");
+    return true;
+  }
+
+  function _safeTransfer(
+    address token_,
+    address to_,
+    uint256 value_
+  ) private returns (bool) {
+    (bool success, bytes memory data) = token_.call(
+      abi.encodeWithSelector(bytes4(keccak256(bytes("transfer(address,uint256)"))), to_, value_)
+    );
+    require(success && (data.length == 0 || abi.decode(data, (bool))), "could not safely transfer tokens");
+    return true;
+  }
+
+  function _safeTransferETH(address to_, uint256 value_) private returns (bool) {
+    (bool success, ) = to_.call{value: value_}(new bytes(0));
+    require(success, "could not safely transfer ether");
+    return true;
+  }
+
   function proceedWithTx() external {
+    require(!_released, "transaction already executed");
+
+    if (_token == address(0)) {
+      _safeTransferETH(_recipient, _amount);
+    } else {}
+
     _released = true;
   }
 

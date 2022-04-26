@@ -15,6 +15,15 @@ interface ITimelock {
 
   function _fee() external returns (uint256);
 
+  function depositEther(uint256 releaseTime_, address recipient) external payable returns (bool);
+
+  function depositERC20(
+    uint256 releaseTime_,
+    address recipient,
+    address token,
+    uint256 value_
+  ) external returns (bool);
+
   function setFeePerHour(uint256 fee_) external;
 
   function proceedWithTx() external;
