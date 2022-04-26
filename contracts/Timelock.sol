@@ -43,7 +43,16 @@ contract Timelock is ITimelock, Context {
     address recipient,
     address token,
     uint256 value_
-  ) external returns (bool) {}
+  ) external returns (bool) {
+    require(IERC20(token).allowance(_msgSender(), address(this)) >= value_, "no allowance");
+    require(_safeTransferFrom(token, _msgSender(), recipient, value_), "could not safely transfer tokens");
+    _releaseTime = releaseTime_;
+    _amount = value_;
+    _token = token;
+    _createdBy = _msgSender();
+    _recipient = recipient;
+    return true;
+  }
 
   function _safeTransferFrom(
     address token_,
@@ -88,6 +97,7 @@ contract Timelock is ITimelock, Context {
       require(address(this).balance >= _amount, "balance too low");
       require(_safeTransferETH(_recipient, _amount), "could not safely transfer ether");
     } else {
+      require(IERC20(_token).balanceOf(address(this)) >= _amount, "balance too low");
       require(_safeTransfer(_token, _recipient, _amount), "could not safely transfer tokens");
     }
 
