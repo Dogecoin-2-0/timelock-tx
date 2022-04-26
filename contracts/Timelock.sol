@@ -1,6 +1,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/ITimelock.sol";
 
 contract Timelock is ITimelock, Context {
@@ -84,11 +85,16 @@ contract Timelock is ITimelock, Context {
     require(!_released, "transaction already executed");
 
     if (_token == address(0)) {
-      _safeTransferETH(_recipient, _amount);
-    } else {}
+      require(address(this).balance >= _amount, "balance too low");
+      require(_safeTransferETH(_recipient, _amount), "could not safely transfer ether");
+    } else {
+      require(_safeTransfer(_token, _recipient, _amount), "could not safely transfer tokens");
+    }
 
     _released = true;
   }
 
-  function retract() external {}
+  function retract() external {
+    require(block.timestamp < _releaseTime, "can only cancel before release time");
+  }
 }
