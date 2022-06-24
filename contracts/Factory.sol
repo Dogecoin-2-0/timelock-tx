@@ -178,6 +178,12 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
       _lockedTokenBalances[timelockObj._token] = _lockedTokenBalances[timelockObj._token].sub(timelockObj._amount);
     }
 
+    timelockObj._creator = address(0);
+    timelockObj._id = 0x00;
+    timelockObj._amount = 0;
+    timelockObj._recipient = address(0);
+    timelockObj._fee = 0;
+
     emit TimelockCancelled(_timelockID);
     return true;
   }
