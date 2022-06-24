@@ -4,6 +4,7 @@ interface IFactory {
   struct TimelockObject {
     bytes32 _id;
     uint256 _amount;
+    address _creator;
     address _recipient;
     address _token;
     uint256 _lockedUntil;
@@ -13,6 +14,7 @@ interface IFactory {
   event TimelockObjectCreated(
     bytes32 _id,
     uint256 _amount,
+    address _creator,
     address _recipient,
     address _token,
     uint256 _lockedUntil,

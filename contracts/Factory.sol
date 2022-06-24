@@ -47,4 +47,25 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
     );
     return sqrt(amount_.mul(lockTime_.div(block.timestamp)).div(uint256(uint160(_recipient))));
   }
+
+  function _lockEtherForLater(uint256 lockTime_, address recipient_) external payable {
+    require(
+      lockTime_.sub(block.timestamp) >= 5 minutes,
+      "difference between lock time and current block time should be at least 5 minutes"
+    );
+    uint256 _fee = _calculateFee(lockTime_, msg.value, _msgSender());
+    bytes32 _timelockID = keccak256(
+      abi.encodePacked(lockTime_, msg.value, recipient_, _msgSender(), _fee, block.timestamp)
+    );
+    _timelocks[_timelockID] = TimelockObject({
+      _id: _timelockID,
+      _amount: msg.value,
+      _creator: _msgSender(),
+      _recipient: recipient_,
+      _token: address(0),
+      _lockedUntil: lockTime_,
+      _fee: _fee
+    });
+    emit TimelockObjectCreated(_timelockID, msg.value, _msgSender(), recipient_, address(0), lockTime_, _fee);
+  }
 }
