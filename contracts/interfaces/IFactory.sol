@@ -1,5 +1,21 @@
 pragma solidity ^0.8.0;
 
 interface IFactory {
-  event TimelockDeployed(address timelock, uint256 timestamp, address owner, address token, uint256 deposited);
+  struct TimelockObject {
+    bytes32 _id;
+    uint256 _amount;
+    address _recipient;
+    address _token;
+    uint256 _lockedUntil;
+    uint256 _fee;
+  }
+
+  event TimelockObjectCreated(
+    bytes32 _id,
+    uint256 _amount,
+    address _recipient,
+    address _token,
+    uint256 _lockedUntil,
+    uint256 _fee
+  );
 }
