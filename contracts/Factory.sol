@@ -141,4 +141,26 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
     });
     emit TimelockObjectCreated(_timelockID, amount_, _msgSender(), recipient_, token_, lockTime_, _fee);
   }
+
+  function proceedWithTx(bytes32 _timelockID) external returns (bool) {
+    TimelockObject storage timelockObj = _timelocks[_timelockID];
+    require(timelockObj._creator == _msgSender() && timelockObj._id != 0x00, "invalid request");
+
+    if (timelockObj._token == address(0)) {
+      _safeTransferETH(timelockObj._recipient, timelockObj._amount.sub(timelockObj._fee));
+      _withdrawableFee = _withdrawableFee.add(timelockObj._fee);
+    } else {
+      _safeTransfer(timelockObj._token, timelockObj._recipient, timelockObj._amount);
+      _lockedTokenBalances[timelockObj._token] = _lockedTokenBalances[timelockObj._token].sub(timelockObj._amount);
+      _withdrawableFee = _withdrawableFee.add(timelockObj._fee);
+    }
+
+    timelockObj._creator = address(0);
+    timelockObj._id = 0x00;
+    timelockObj._amount = 0;
+    timelockObj._recipient = address(0);
+    timelockObj._fee = 0;
+
+    return true;
+  }
 }
