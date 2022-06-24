@@ -20,4 +20,7 @@ interface IFactory {
     uint256 _lockedUntil,
     uint256 _fee
   );
+
+  event TimelockProcessed(bytes32 _id);
+  event TimelockCancelled(bytes32 _id);
 }
