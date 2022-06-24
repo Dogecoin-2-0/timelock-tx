@@ -199,7 +199,7 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
   function _takeToken(address token) external onlyAdmin {
     require(
       IERC20(token).balanceOf(address(this)) > _lockedTokenBalances[token],
-      "must be greater than locked token balances"
+      "balance must be greater than locked token balances"
     );
     uint256 _amount = IERC20(token).balanceOf(address(this)).sub(_lockedTokenBalances[token]);
     require(_safeTransfer(token, _feeTaker, _amount), "could not transfer tokens");
