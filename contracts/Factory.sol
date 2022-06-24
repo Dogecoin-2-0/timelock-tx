@@ -5,12 +5,17 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
   using SafeMath for uint256;
 
   mapping(bytes32 => TimelockObject) private _timelocks;
+
+  // Keep record of untouchable token balances to prevent withdrawal
+  mapping(address => uint256) private _lockedTokenBalances;
   address private _feeTaker;
+  uint256 private _withdrawableFee;
 
   modifier onlyAdmin() {
     require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "only admin");
@@ -48,6 +53,44 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
     return sqrt(amount_.mul(lockTime_.div(block.timestamp)).div(uint256(uint160(_recipient))));
   }
 
+  function _safeTransferFrom(
+    address token_,
+    address owner_,
+    address recipient_,
+    uint256 amount_
+  ) private returns (bool) {
+    (bool success, ) = token_.call(
+      abi.encodeWithSelector(
+        bytes4(keccak256(bytes("transferFrom(address,address,uint256)"))),
+        owner_,
+        recipient_,
+        amount_
+      )
+    );
+    require(success, "could not transfer token");
+    return true;
+  }
+
+  function _safeTransfer(
+    address token_,
+    address recipient_,
+    uint256 amount_
+  ) private returns (bool) {
+    (bool success, ) = token_.call(
+      abi.encodeWithSelector(bytes4(keccak256(bytes("transfer(address,uint256)"))), recipient_, amount_)
+    );
+    require(success, "could not transfer token");
+    return true;
+  }
+
+  function _safeTransferETH(address to_, uint256 amount_) private returns (bool) {
+    uint256 balance = address(this).balance;
+    require(balance >= amount_, "balance too low");
+    (bool success, ) = to_.call{value: amount_}(new bytes(0));
+    require(success, "could not transfer ether");
+    return true;
+  }
+
   function _lockEtherForLater(uint256 lockTime_, address recipient_) external payable {
     require(
       lockTime_.sub(block.timestamp) >= 5 minutes,
@@ -67,5 +110,35 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
       _fee: _fee
     });
     emit TimelockObjectCreated(_timelockID, msg.value, _msgSender(), recipient_, address(0), lockTime_, _fee);
+  }
+
+  function _lockTokenForLater(
+    address token_,
+    uint256 lockTime_,
+    address recipient_,
+    uint256 amount_
+  ) external payable {
+    require(
+      lockTime_.sub(block.timestamp) >= 5 minutes,
+      "difference between lock time and current block time should be at least 5 minutes"
+    );
+    require(IERC20(token_).allowance(_msgSender(), address(this)) >= amount_, "allowance too low");
+    uint256 _fee = _calculateFee(lockTime_, amount_, _msgSender());
+    require(msg.value >= _fee, "must pay exact fee");
+    bytes32 _timelockID = keccak256(
+      abi.encodePacked(lockTime_, amount_, recipient_, _msgSender(), _fee, block.timestamp)
+    );
+    _safeTransferFrom(token_, _msgSender(), address(this), amount_);
+    _lockedTokenBalances[token_] = amount_;
+    _timelocks[_timelockID] = TimelockObject({
+      _id: _timelockID,
+      _amount: amount_,
+      _creator: _msgSender(),
+      _recipient: recipient_,
+      _token: token_,
+      _lockedUntil: lockTime_,
+      _fee: _fee
+    });
+    emit TimelockObjectCreated(_timelockID, amount_, _msgSender(), recipient_, token_, lockTime_, _fee);
   }
 }
