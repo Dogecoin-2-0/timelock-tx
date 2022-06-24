@@ -86,7 +86,7 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
   function _safeTransferETH(address to_, uint256 amount_) private returns (bool) {
     uint256 balance = address(this).balance;
     require(balance >= amount_, "balance too low");
-    (bool success, ) = to_.call{value: amount_}(new bytes(0));
+    (bool success, ) = payable(to_).call{value: amount_}(new bytes(0));
     require(success, "could not transfer ether");
     return true;
   }
@@ -142,7 +142,7 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
     emit TimelockObjectCreated(_timelockID, amount_, _msgSender(), recipient_, token_, lockTime_, _fee);
   }
 
-  function proceedWithTx(bytes32 _timelockID) external returns (bool) {
+  function _proceedWithTx(bytes32 _timelockID) external returns (bool) {
     TimelockObject storage timelockObj = _timelocks[_timelockID];
     require(timelockObj._creator == _msgSender() && timelockObj._id != 0x00, "invalid request");
 
@@ -166,7 +166,7 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
     return true;
   }
 
-  function cancelTx(bytes32 _timelockID) external returns (bool) {
+  function _cancelTx(bytes32 _timelockID) external returns (bool) {
     TimelockObject storage timelockObj = _timelocks[_timelockID];
     require(block.timestamp >= timelockObj._lockedUntil, "cannot cancel before lock expiration");
     require(timelockObj._creator == _msgSender() && timelockObj._id != 0x00, "invalid request");
@@ -186,5 +186,22 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
 
     emit TimelockCancelled(_timelockID);
     return true;
+  }
+
+  function _setFeeTaker(address feeTaker_) external onlyAdmin {
+    _feeTaker = feeTaker_;
+  }
+
+  function _takeWithdrawableFees() external onlyAdmin {
+    require(_safeTransferETH(_feeTaker, _withdrawableFee), "could not take fees");
+  }
+
+  function _takeToken(address token) external onlyAdmin {
+    require(
+      IERC20(token).balanceOf(address(this)) > _lockedTokenBalances[token],
+      "must be greater than locked token balances"
+    );
+    uint256 _amount = IERC20(token).balanceOf(address(this)).sub(_lockedTokenBalances[token]);
+    require(_safeTransfer(token, _feeTaker, _amount), "could not transfer tokens");
   }
 }
