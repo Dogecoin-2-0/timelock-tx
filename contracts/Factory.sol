@@ -211,5 +211,9 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
     require(_safeTransfer(token, _feeTaker, _amount), "could not transfer tokens");
   }
 
+  function _getTimelock(bytes32 _timelockID) external view returns (TimelockObject memory) {
+    return _timelocks[_timelockID];
+  }
+
   receive() external payable {}
 }

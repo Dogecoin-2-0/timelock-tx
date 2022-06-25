@@ -46,9 +46,14 @@ describe("Timelock", () => {
   it("should proceed with transaction", async () => {
     const [signer1] = await ethers.getSigners();
     const timelockID = await timelock._allTimelocks(0);
+    const timelockObj = await timelock._getTimelock(timelockID);
     console.log("Timelock ID: %s", timelockID);
+    console.log("Timelock Object Before: %s", JSON.stringify(timelockObj));
     await expect(timelock._proceedWithTx(timelockID, { from: signer1.address }))
       .to.emit(timelock, "TimelockProcessed")
       .withArgs(timelockID);
+
+    const timelockObjAfter = await timelock._getTimelock(timelockID);
+    console.log("Timelock Object After: %s", JSON.stringify(timelockObjAfter));
   });
 });
