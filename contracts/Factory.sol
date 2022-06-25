@@ -16,6 +16,7 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
   mapping(address => uint256) private _lockedTokenBalances;
   address private _feeTaker;
   uint256 private _withdrawableFee;
+  bytes32[] public _allTimelocks;
 
   modifier onlyAdmin() {
     require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "only admin");
@@ -44,13 +45,16 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
   function _calculateFee(
     uint256 lockTime_,
     uint256 amount_,
-    address _recipient
+    address _creator
   ) public view returns (uint256) {
     require(
       lockTime_.sub(block.timestamp) >= 5 minutes,
       "difference between lock time and current block time should be at least 5 minutes"
     );
-    return sqrt(amount_.mul(lockTime_.div(block.timestamp)).div(uint256(uint160(_recipient))));
+    return
+      sqrt(amount_.mul(lockTime_.div(block.timestamp)).div(uint256(uint160(_creator)).sub(1 ether))).add(
+        uint256(1 ether).div(10000)
+      );
   }
 
   function _safeTransferFrom(
@@ -109,6 +113,7 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
       _lockedUntil: lockTime_,
       _fee: _fee
     });
+    _allTimelocks.push(_timelockID);
     emit TimelockObjectCreated(_timelockID, msg.value, _msgSender(), recipient_, address(0), lockTime_, _fee);
   }
 
@@ -139,6 +144,7 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
       _lockedUntil: lockTime_,
       _fee: _fee
     });
+    _allTimelocks.push(_timelockID);
     emit TimelockObjectCreated(_timelockID, amount_, _msgSender(), recipient_, token_, lockTime_, _fee);
   }
 
@@ -204,4 +210,6 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
     uint256 _amount = IERC20(token).balanceOf(address(this)).sub(_lockedTokenBalances[token]);
     require(_safeTransfer(token, _feeTaker, _amount), "could not transfer tokens");
   }
+
+  receive() external payable {}
 }

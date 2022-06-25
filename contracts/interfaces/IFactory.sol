@@ -23,4 +23,6 @@ interface IFactory {
 
   event TimelockProcessed(bytes32 _id);
   event TimelockCancelled(bytes32 _id);
+
+  function _allTimelocks(uint256) external view returns (bytes32);
 }
