@@ -15,8 +15,9 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
   // Keep record of untouchable token balances to prevent withdrawal
   mapping(address => uint256) private _lockedTokenBalances;
   address private _feeTaker;
-  uint256 private _withdrawableFee;
+  uint256 public _withdrawableFee;
   bytes32[] public _allTimelocks;
+  uint256 public immutable deployTime;
 
   modifier onlyAdmin() {
     require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "only admin");
@@ -26,6 +27,7 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
   constructor(address feeTaker_) {
     _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
     _feeTaker = feeTaker_;
+    deployTime = block.timestamp;
   }
 
   // Babylonian method (https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method)
@@ -42,19 +44,9 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
     }
   }
 
-  function _calculateFee(
-    uint256 lockTime_,
-    uint256 amount_,
-    address _creator
-  ) public view returns (uint256) {
-    require(
-      lockTime_.sub(block.timestamp) >= 5 minutes,
-      "difference between lock time and current block time should be at least 5 minutes"
-    );
-    return
-      sqrt(amount_.mul(lockTime_.div(block.timestamp)).div(uint256(uint160(_creator)).sub(1 ether))).add(
-        uint256(1 ether).div(10000)
-      );
+  function _calculateFee(uint256 lockTime_, uint256 amount_) public view returns (uint256 fee) {
+    uint256 ratio = deployTime.mul(10).div(block.timestamp);
+    fee = sqrt(ratio.mul(amount_).div(10).sub(lockTime_));
   }
 
   function _safeTransferFrom(
@@ -100,7 +92,7 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
       lockTime_.sub(block.timestamp) >= 5 minutes,
       "difference between lock time and current block time should be at least 5 minutes"
     );
-    uint256 _fee = _calculateFee(lockTime_, msg.value, _msgSender());
+    uint256 _fee = _calculateFee(lockTime_, msg.value);
     bytes32 _timelockID = keccak256(
       abi.encodePacked(lockTime_, msg.value, recipient_, _msgSender(), _fee, block.timestamp)
     );
@@ -128,7 +120,7 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
       "difference between lock time and current block time should be at least 5 minutes"
     );
     require(IERC20(token_).allowance(_msgSender(), address(this)) >= amount_, "allowance too low");
-    uint256 _fee = _calculateFee(lockTime_, amount_, _msgSender());
+    uint256 _fee = _calculateFee(lockTime_, amount_);
     require(msg.value >= _fee, "must pay exact fee");
     bytes32 _timelockID = keccak256(
       abi.encodePacked(lockTime_, amount_, recipient_, _msgSender(), _fee, block.timestamp)
@@ -161,11 +153,7 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
       _withdrawableFee = _withdrawableFee.add(timelockObj._fee);
     }
 
-    timelockObj._creator = address(0);
-    timelockObj._id = 0x00;
-    timelockObj._amount = 0;
-    timelockObj._recipient = address(0);
-    timelockObj._fee = 0;
+    delete _timelocks[_timelockID];
 
     emit TimelockProcessed(_timelockID);
 
@@ -184,11 +172,7 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
       _lockedTokenBalances[timelockObj._token] = _lockedTokenBalances[timelockObj._token].sub(timelockObj._amount);
     }
 
-    timelockObj._creator = address(0);
-    timelockObj._id = 0x00;
-    timelockObj._amount = 0;
-    timelockObj._recipient = address(0);
-    timelockObj._fee = 0;
+    delete _timelocks[_timelockID];
 
     emit TimelockCancelled(_timelockID);
     return true;
