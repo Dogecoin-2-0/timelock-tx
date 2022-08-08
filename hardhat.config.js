@@ -13,6 +13,18 @@ module.exports = {
     binance_testnet: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
       accounts: [process.env.PRIVATE_KEY]
+    },
+    polygon_testnet: {
+      url: "https://matic-mumbai.chainstacklabs.com",
+      accounts: [process.env.PRIVATE_KEY]
+    },
+    ethereum_testnet: {
+      url: "https://rpc.ankr.com/eth_ropsten",
+      accounts: [process.env.PRIVATE_KEY]
+    },
+    avalanche_testnet: {
+      url: "https://rpc.ankr.com/avalanche_fuji",
+      accounts: [process.env.PRIVATE_KEY]
     }
   },
   etherscan: {
