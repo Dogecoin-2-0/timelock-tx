@@ -134,7 +134,7 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
       _recipient: recipient_,
       _token: token_,
       _lockedUntil: lockTime_,
-      _fee: _fee
+      _fee: msg.value
     });
     _allTimelocks.push(_timelockID);
     emit TimelockObjectCreated(_timelockID, amount_, _msgSender(), recipient_, token_, lockTime_, _fee);
@@ -199,5 +199,7 @@ contract Factory is IFactory, Context, ReentrancyGuard, AccessControl {
     return _timelocks[_timelockID];
   }
 
-  receive() external payable {}
+  receive() external payable {
+    _withdrawableFee = _withdrawableFee.add(msg.value);
+  }
 }
